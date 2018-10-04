@@ -48,13 +48,14 @@ _SINGLE_TENSOR_DEFAULT_NAMES = {
 }
 
 
-def _wrap_and_check_input_tensors(tensors, field_name):
+def _wrap_and_check_input_tensors(tensors, field_name, allow_int_keys=False):
   """Ensure that tensors is a dict of str to Tensor mappings.
 
   Args:
-    tensors: dict of str to Tensors, or a single Tensor.
+    ttensors: dict of str (and ints) to Tensors, or a single Tensor.
     field_name: name of the member field of `ServingInputReceiver`
       whose value is being passed to `tensors`.
+    allow_int_keys: If set to true, the `tensor` dict keys may also be ints.
 
   Returns:
     dict of str to Tensors; this is the original dict if one was passed, or
@@ -69,7 +70,7 @@ def _wrap_and_check_input_tensors(tensors, field_name):
   if not isinstance(tensors, dict):
     tensors = {_SINGLE_TENSOR_DEFAULT_NAMES[field_name]: tensors}
   for name, tensor in tensors.items():
-    _check_tensor_key(name, error_label=field_name)
+    _check_tensor_key(name, error_label=field_name, allow_ints=allow_int_keys)
     _check_tensor(tensor, name, error_label=field_name)
   return tensors
 
@@ -97,9 +98,13 @@ def _check_tensor(tensor, name, error_label='feature'):
       raise value_error
 
 
-def _check_tensor_key(name, error_label='feature'):
+def _check_tensor_key(name, error_label='feature', allow_ints=False):
   if not isinstance(name, six.string_types):
-    raise ValueError('{} keys must be strings: {}.'.format(error_label, name))
+    if not allow_ints:
+      raise ValueError('{} keys must be strings: {}.'.format(error_label, name))
+    elif not isinstance(name, int):
+      raise ValueError('{} keys must be strings or ints: {}.'.format(
+          error_label, name))
 
 
 @estimator_export('estimator.export.ServingInputReceiver')
@@ -110,11 +115,11 @@ class ServingInputReceiver(
   """A return type for a serving_input_receiver_fn.
 
   The expected return values are:
-    features: A `Tensor`, `SparseTensor`, or dict of string to `Tensor` or
-      `SparseTensor`, specifying the features to be passed to the model. Note:
-      if `features` passed is not a dict, it will be wrapped in a dict with a
-      single entry, using 'feature' as the key.  Consequently, the model must
-      accept a feature dict of the form {'feature': tensor}.  You may use
+    features: A `Tensor`, `SparseTensor`, or dict of string or int to `Tensor`
+      or `SparseTensor`, specifying the features to be passed to the model.
+      Note: if `features` passed is not a dict, it will be wrapped in a dict
+      with a single entry, using 'feature' as the key.  Consequently, the model
+      must accept a feature dict of the form {'feature': tensor}.  You may use
       `TensorServingInputReceiver` if you want the tensor to be passed as is.
     receiver_tensors: A `Tensor`, `SparseTensor`, or dict of string to `Tensor`
       or `SparseTensor`, specifying input nodes where this receiver expects to
@@ -134,7 +139,8 @@ class ServingInputReceiver(
               features,
               receiver_tensors,
               receiver_tensors_alternatives=None):
-    features = _wrap_and_check_input_tensors(features, 'feature')
+    features = _wrap_and_check_input_tensors(
+        features, 'feature', allow_int_keys=True)
 
     receiver_tensors = _wrap_and_check_input_tensors(receiver_tensors,
                                                      'receiver_tensor')
