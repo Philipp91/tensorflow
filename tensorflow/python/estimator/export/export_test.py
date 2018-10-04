@@ -62,7 +62,7 @@ class ServingInputReceiverTest(test_util.TensorFlowTestCase):
     features = {
         "feature0": constant_op.constant([0]),
         u"feature1": constant_op.constant([1]),
-        "feature2": sparse_tensor.SparseTensor(
+        2: sparse_tensor.SparseTensor(
             indices=[[0, 0]], values=[1], dense_shape=[1, 1]),
     }
     receiver_tensors = {
@@ -82,9 +82,10 @@ class ServingInputReceiverTest(test_util.TensorFlowTestCase):
           features=None,
           receiver_tensors=receiver_tensors)
 
-    with self.assertRaisesRegexp(ValueError, "feature keys must be strings"):
+    with self.assertRaisesRegexp(ValueError,
+                                 "feature keys must be strings or ints"):
       export.ServingInputReceiver(
-          features={1: constant_op.constant([1])},
+          features={1.0: constant_op.constant([1])},
           receiver_tensors=receiver_tensors)
 
     with self.assertRaisesRegexp(
